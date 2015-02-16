@@ -1,0 +1,58 @@
+(dp1
+S'id'
+p2
+(dp3
+S'length'
+p4
+I512
+sS'unique'
+p5
+I00
+sS'sortable'
+p6
+I1
+sS'sql'
+p7
+S'INTEGER PRIMARY KEY AUTOINCREMENT'
+p8
+sS'notnull'
+p9
+I00
+sS'type'
+p10
+g2
+ssS'reward_id'
+p11
+(dp12
+g4
+I512
+sg5
+I00
+sg6
+I2
+sg7
+S'INTEGER REFERENCES Rewards (id) ON DELETE CASCADE'
+p13
+sg9
+I00
+sg10
+S'reference Rewards'
+p14
+ssS'pledgeOption_id'
+p15
+(dp16
+g4
+I512
+sg5
+I00
+sg6
+I3
+sg7
+S'INTEGER REFERENCES PledgeOptions (id) ON DELETE CASCADE'
+p17
+sg9
+I00
+sg10
+S'reference PledgeOptions'
+p18
+ss.

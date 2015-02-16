@@ -1,0 +1,378 @@
+(dp1
+S'output'
+p2
+S"<type 'exceptions.ImportError'> No module named bootup.modules.bootup"
+p3
+sS'layer'
+p4
+S'/Users/Samuel/Documents/University/IAPT/web2py/applications/bootup/controllers/default.py'
+p5
+sS'code'
+p6
+S'# -*- coding: utf-8 -*-\n# Candidate number: Y0073045\n\nimport datetime\n\nfrom bootup import notNone\n\ndef index():\n\tnewestFiveBootables = db(db.BootablesWithTotalPledged.state == 0).select(orderby=~db.BootablesWithTotalPledged.dateCreated)[0:5]\n\tnewestFiveBootables.compact = False\n\tnewestFiveBootables = notNone(newestFiveBootables)\n\t\n\tclosestFiveToFunded = db(\n\t\t\t\t\t\t(db.BootablesWithTotalPledged.state == 0) & \\\n\t\t\t\t\t\t((db.BootablesWithTotalPledged.percentageComplete < 100) |\n\t\t\t\t\t\t(db.BootablesWithTotalPledged.percentageComplete == None))).select(orderby=~db.BootablesWithTotalPledged.percentageComplete)[0:5]\n\tclosestFiveToFunded.compact = False\n\tclosestFiveToFunded = notNone(closestFiveToFunded)\n\t\n\treturn dict(newestFiveBootables=newestFiveBootables,\n\t\t\t\tclosestFiveToFunded=closestFiveToFunded)\n\t\n@auth.requires_login()\ndef new():\n\t# Hide user_id field, create the table, then populate user_id field\n\tdb.Bootables.user_id.readable = db.Bootables.user_id.writable = False\n\tdb.Bootables.dateCreated.readable = db.Bootables.dateCreated.writable = False\n\tdb.Bootables.state.readable = db.Bootables.state.writable = False\n\tform = SQLFORM(db.Bootables, record=None, formstyle="bootstrap3_stacked")\n\tform.vars.user_id = auth.user.id\n\tform.vars.dateCreated = datetime.datetime.utcnow()\n\tform.vars.state = -1\n\tif form.accepts(request,session):\n\t\tredirect(URL(\'default\', \'editPledge\', args=form.vars.id))\n\telif form.errors:\n\t\tresponse.flash = \'One or more of your form fields has an error. Please see below for more information\'\n\t\n\treturn dict(form=form)\n\n@auth.requires_login()\t\ndef addPledge():\n\tnewBootableRecord = db((db.Bootables.user_id == auth.user.id)).select(db.Bootables.ALL).as_list()[-1]\n\taddPledgeForm = SQLFORM(db.PledgeOptions, record=None, formstyle="bootstrap3_stacked", fields=[\'reward_title\', \'reward_description\', \'price\'])\n\taddPledgeForm.vars.bootable_id = newBootableRecord[\'id\']\n\t\n\tif addPledgeForm.accepts(request,session):\n\t\tresponse.flash = \'Pledge option added\'\n\telif addPledgeForm.errors:\n\t\tresponse.flash = \'One or more of your form fields has an error. Please see below for more information\'\n\telse:\n\t\tresponse.flash = \'Please complete the form below to create a new bootable.\'\n\t\n\treturn dict(addPledgeForm=addPledgeForm)\n\n@auth.requires_login()\ndef editBootable():\n\tbootableId = request.args(0)\n\tif (bootableId != None):\n\t\t# Get the bootable record\n\t\tbootableRecord=db.Bootables(bootableId)\n\t\t# Hide user_id field and create the table (using the bootable record)\n\t\tdb.Bootables.user_id.readable = db.Bootables.user_id.writable = False\n\t\tdb.Bootables.dateCreated.readable = db.Bootables.dateCreated.writable = False\n\t\tdb.Bootables.state.readable = db.Bootables.state.writable = False\n\t\tdb.Bootables.id.readable = db.Bootables.id.writable = False\n\t\teditBootableForm = SQLFORM(db.Bootables, record=bootableRecord, formstyle="bootstrap3_stacked")\n\t\n\t\tif editBootableForm.accepts(request,session):\n\t\t\tresponse.flash = \'Your changes have been saved.\'\n\t\telif editBootableForm.errors:\n\t\t\tresponse.flash = \'One or more of your form fields has an error. Please see below for more information\'\n\t\telse:\n\t\t\tresponse.flash = \'Please complete the form below to edit your bootable.\'\n\n\t\treturn dict(editBootableForm=editBootableForm)\n\n@auth.requires_login()\t\ndef editPledge():\n\tbootable_id=request.args(0)\n\tdb.Rewards.bootable_id.readable = db.Rewards.bootable_id.writable = False\n\trewardsForm = SQLFORM(db.Rewards, record=None, formstyle="bootstrap3_stacked")\n\trewardsForm.vars.bootable_id=bootable_id\n\tif rewardsForm.accepts(request,session):\n\t\tpass\n\telif rewardsForm.errors:\n\t\tresponse.flash = \'One or more of your form fields has an error. Please see below for more information\'\n\telse:\n\t\tresponse.flash = \'Add rewards below\'\n\t\t\n\tdb.PledgeOptions.bootable_id.readable = db.PledgeOptions.bootable_id.writable = False\n\tdb.PledgeOptions.reward.requires = IS_IN_DB(db(db.Rewards.bootable_id==bootable_id), db.Rewards.id, \'%(reward)s\', multiple=True)\n\taddPledgeForm = SQLFORM.factory(db.PledgeOptions, record=None, formstyle="bootstrap3_stacked")\n\taddPledgeForm.vars.bootable_id=request.args(0)\n\tif addPledgeForm.accepts(request,session):\n\t\tpledgeId = db.PledgeOptions.insert(\n\t\t\t\t\t\t\t\t\t\tbootable_id=addPledgeForm.vars.bootable_id,\n\t\t\t\t\t\t\t\t\t\tprice=addPledgeForm.vars.price,\n\t\t\t\t\t\t\t\t\t\tpledgeTitle=addPledgeForm.vars.pledgeTitle)\n\t\trewardsSelected = addPledgeForm.vars.reward\n\t\tfor rewardSelected in rewardsSelected:\n\t\t\tdb.PledgeRewardPairs.insert(reward_id=rewardSelected,pledgeOption_id=pledgeId)\n\telif addPledgeForm.errors:\n\t\tresponse.flash = \'One or more of your form fields has an error. Please see below for more information\'\n\telse:\n\t\tresponse.flash = \'Add Possible Pledges Below\'\n\t\t\n\texistingRewards = db(db.Rewards.bootable_id == bootable_id).select()\n\texistingPledgeOptions = db(db.RewardsForEachPledgeOption.bootable_id == bootable_id).select()\n\trewardsInPledgesQuery = db(db.PledgeRewardPairs).select()\n\trewardsInPledges = []\n\tfor rewardInPledges in rewardsInPledgesQuery:\n\t\trewardsInPledges.append(rewardInPledges.reward_id)\n\t\n\tthisBootable=db(db.Bootables.id == request.args(0)).select().first()\n\t\n\treturn dict(rewardsForm=rewardsForm,\n\t\t\t\taddPledgeForm=addPledgeForm,\n\t\t\t\texistingRewards=existingRewards,\n\t\t\t\texistingPledgeOptions=existingPledgeOptions,\n\t\t\t\trewardsInPledges=rewardsInPledges,\n\t\t\t\tthisBootable=thisBootable)\t\n\t\t\t\n# \tpledgeOption = request.args(0)\n# \tif (pledgeOption == None):\n# \t\tpledgeForm = SQLFORM(db.PledgeOptions, record=None, formstyle="bootstrap3_stacked", fields=[\'reward_title\', \'reward_description\', \'price\'])\n# \telse:\n# \t\tdb.PledgeOptions.id.readable = db.PledgeOptions.id.writable = False\n# \t\tpledgeRecord=db.PledgeOptions(pledgeOption)\n# \t\tpledgeForm = SQLFORM(db.PledgeOptions, record=pledgeRecord, formstyle="bootstrap3_stacked", fields=[\'reward_title\', \'reward_description\', \'price\'])\n# \treturn dict(pledgeForm=pledgeForm)\n\n@auth.requires_login()\ndef editReward():\n\tbootable_id = request.args(0)\n\treward_id = request.args(1)\n\tdb.Rewards.id.readable = db.Rewards.id.writable = False\n\trewardRecord = db.Rewards(reward_id)\n\trewardForm = SQLFORM(db.Rewards, record=rewardRecord, formstyle="bootstrap3_stacked", fields=["reward"])\n\t\n\tif rewardForm.accepts(request,session):\n\t\tredirect(URL(\'default\', \'editPledge\', args=bootable_id))\n\telif rewardForm.errors:\n\t\tresponse.flash = \'Rewards must have a description.\'\n\t\n\treturn dict(rewardForm=rewardForm)\n\n@auth.requires_login()\t\ndef deleteReward():\n\tbootable_id = request.args(0)\n\treward_id = request.args(1)\n\tdb(db.Rewards.id == reward_id).delete()\n\tredirect(URL(\'default\', \'editPledge\', args=bootable_id))\n\n@auth.requires_login()\ndef deletePledge():\n\tbootable_id = request.args(0)\n\tpledgeOption_id = request.args(1)\n\tdb(db.PledgeRewardPairs.pledgeOption_id==pledgeOption_id).delete()\n\tdb(db.PledgeOptions.id==pledgeOption_id).delete()\n\tredirect(URL(\'default\', \'editPledge\', args=bootable_id))\n\n@auth.requires_login()\ndef deleteBootable():\n\tbootable_id = request.args(0)\n\tpledgeOptionsForThisBootableQuery = db(db.PledgeOptions.bootable_id==bootable_id).select()\n\tpledgeOptionsForThisBootable = []\n\tfor pledgeOptionForThisBootable in pledgeOptionsForThisBootableQuery:\n\t\tpledgeOptionsForThisBootable.append(pledgeOptionForThisBootable.id)\n\t# Delete rewards for this Bootable\n\tdb(db.Rewards.bootable_id == bootable_id).delete()\n\tfor pledgeOption in pledgeOptionsForThisBootable:\n\t\t# Delete PledgeRewardPairs for this PledgeOption for this Bootable\n\t\tdb(db.PledgeRewardPairs.pledgeOption_id == pledgeOption).delete()\n\t\t# Delete Pledges for this PledgeOption for this Bootable\n\t\tdb(db.Pledges.pledge_id == pledgeOption).delete()\n\t# Delete the PledgeOptions for this Bootable\n\tdb(db.PledgeOptions.bootable_id == bootable_id).delete()\n\t# Delete this bootable\n\tdb(db.Bootables.id == bootable_id).delete()\n\tredirect(URL(\'user\', \'profile\'))\n\ndef category():\n\tbootables = db((db.BootablesWithTotalPledged.category==db.Categories.id) & (db.Categories.category == request.args(0))).select()\n\tbootables=notNone(bootables)\n\treturn dict(bootables=bootables)\n\t\ndef download():\n\treturn response.download(request, db)\n\t\ndef search():\n\tsearchTerm="%"+request.vars.searchTerm+"%"\n\t# TODO - add search for shortDescription as well, these items should be lower priority though.  Sort by date created.\n\tbootables = db(\n\t\t\t\t(db.BootablesWithTotalPledged.state >= 0) & \\\n\t\t\t\t(db.BootablesWithTotalPledged.title.like(searchTerm))).select()\n\tbootables.compact = False\n\tbootables=notNone(bootables)\n\treturn dict(bootables=bootables)\n\t\ndef view():\n\tbootable = db((db.BootablesWithTotalPledged.category==db.Categories.id) & \\\n\t\t(db.BootablesWithTotalPledged.id == request.args(0))).select()\n\tbootable=notNone(bootable)\n\tbootable=notNone(bootable).first()\n\t\t\n\tpossiblePledgeOptions = db(\n\t\t(db.PledgeOptions.bootable_id==request.args(0))).select()\n\tprocessedPossiblePledges = []\n\tfor possiblePledgeOption in possiblePledgeOptions:\n\t\tpledgeWithRewards = db(\n\t\t\t(db.PledgeRewardPairs.pledgeOption_id==possiblePledgeOption.id) & \\\n\t\t\t(db.PledgeRewardPairs.reward_id==db.Rewards.id)).select()\n\t\trewards=[]\n\t\tfor row in pledgeWithRewards:\n\t\t\trewards.append(row.Rewards.reward)\n\t\tprocessedPossiblePledges.append({\n\t\t\t\t\t\t\t\t\t\'pledgeOption_id\':possiblePledgeOption.id,\n\t\t\t\t\t\t\t\t\t\'price\':possiblePledgeOption.price,\n\t\t\t\t\t\t\t\t\t\'pledgeTitle\':possiblePledgeOption.pledgeTitle,\n\t\t\t\t\t\t\t\t\t\'rewards\':rewards\n\t\t\t\t\t\t\t\t\t})\n\t\t\n\tusersAndPledges = db((db.Bootables.id==db.PledgeOptions.bootable_id) & \\\n\t\t(db.Bootables.id == request.args(0)) & \\\n\t\t(db.Pledges.user_id == db.auth_user.id) & \\\n\t\t(db.Pledges.pledge_id == db.PledgeOptions.id)).select()\n\t\n\tuserIsLoggedIn = False\n\tif (auth.user != None):\n\t\tuserIsLoggedIn=True\n\t\t\n\tpledgesFromThisUserForThisBootable=None\n\tif (userIsLoggedIn):\n\t\tpledgesFromThisUserForThisBootableQuery = db((db.Bootables.id==db.PledgeOptions.bootable_id) & \\\n\t\t\t(db.Bootables.id == request.args(0)) & \\\n\t\t\t(db.Pledges.user_id == db.auth_user.id) & \\\n\t\t\t(db.Pledges.user_id == auth.user.id) & \\\n\t\t\t(db.Pledges.pledge_id == db.PledgeOptions.id)).select()\n\t\tif (len(pledgesFromThisUserForThisBootableQuery)>0):\n\t\t\tpledgesFromThisUserForThisBootable = pledgesFromThisUserForThisBootableQuery[0]\n\t\n\treturn dict(\n\t\tbootable=bootable,\n\t\tprocessedPossiblePledges=processedPossiblePledges,\n\t\tusersAndPledges=usersAndPledges,\n\t\tuserIsLoggedIn=userIsLoggedIn,\n\t\tpledgesFromThisUserForThisBootable=pledgesFromThisUserForThisBootable,\n\t)\n\t\n@auth.requires_login()\ndef launchOrRelaunch():\n\tbootableId=request.args(0)\n\tdb(db.Bootables.id==bootableId).update(state=0)\n\tif (request.args(1) == "view"):\n\t\tredirect(URL(\'default\',\'view\',args=request.args(0)))\n\telse:\n\t\tredirect(URL(\'user\',\'profile\'))\n\t\t\n@auth.requires_login()\ndef close():\n\tbootableId=request.args(0)\n\tbootableRecord = db(db.BootablesWithTotalPledged.id==bootableId).select().first()\n\tif (bootableRecord.percentageComplete < 100 or bootableRecord.percentageComplete == None):\n\t\tdb(db.Bootables.id==bootableId).update(state=2)\n\telse:\n\t\tdb(db.Bootables.id==bootableId).update(state=1)\n\tif (request.args(1) == "view"):\n\t\tredirect(URL(\'default\',\'view\',args=request.args(0)))\n\telse:\n\t\tredirect(URL(\'user\',\'profile\'))\n\n@auth.requires_login()\ndef boot():\n\t# Delete previous pledges for this user on this bootable\n\tpledgesFromThisUserForThisBootableQuery = db((db.Bootables.id==db.PledgeOptions.bootable_id) & \\\n\t\t\t(db.Bootables.id == request.args(0)) & \\\n\t\t\t(db.Pledges.user_id == db.auth_user.id) & \\\n\t\t\t(db.Pledges.user_id == auth.user.id) & \\\n\t\t\t(db.Pledges.pledge_id == db.PledgeOptions.id)).select()\n\tfor pledge in pledgesFromThisUserForThisBootableQuery:\n\t\tdb(db.Pledges.id == pledge.Pledges.id).delete()\n\t\t\n\t# Make the pledge\n\tbootable = request.args(0)\n\tpledge_id = request.args(1)\n\tuser_id = auth.user.id\n\tdb.Pledges.insert(user_id=user_id, pledge_id=pledge_id)\n\t\n\t# Send user back to the bootable, now they\'ve made their pledge.\n\tredirect(URL(\'default\', \'view\', args=bootable))\n\t\ndef auth_user():\n\tauth.settings.formstyle = \'bootstrap3_stacked\'\n\n\t# Shipping and billing addresses are edited elsewhere in the application.  We never\n\t# show ID since it is a unique primary key.  \n\t\n\t# Originally it was assumed Birthdate would never change.  This is because a user may\n\t# try and make their birthdate earlier in the past after realising that they don\'t\n\t# qualify for some parts of the application (e.g. because they are under the age of\n\t# 18).  This was achieved by simply setting the Birthdate attribute readable and \n\t# writeable to False, as has been done below with ID.\n\t# The decision was not taken, since the assessment document says that a user should be\n\t# able to chance all information stored on them.\n\t\n\tdb.auth_user.shippingAddress.readable = db.auth_user.shippingAddress.writable = False\n\tdb.auth_user.paymentMethod.readable = db.auth_user.paymentMethod.writable = False\n\tdb.auth_user.id.readable = db.auth_user.id.writable = False\n\n\t# Set redirect URL for after logging-in to the page that the user was on before (if\n\t# this variable was passed in).\t\n\tauth.settings.login_next = request.vars[\'_next\']\n\n\treturn dict(form=auth())\nresponse._vars=response._caller(index)\n'
+p7
+sS'snapshot'
+p8
+(dp9
+S'exception'
+p10
+(dp11
+S'__hash__'
+p12
+S"<method-wrapper '__hash__' of exceptions.ImportError object>"
+p13
+sS'__setattr__'
+p14
+S"<method-wrapper '__setattr__' of exceptions.ImportError object>"
+p15
+sS'__reduce_ex__'
+p16
+S'<built-in method __reduce_ex__ of exceptions.ImportError object>'
+p17
+sS'__getslice__'
+p18
+S"<method-wrapper '__getslice__' of exceptions.ImportError object>"
+p19
+sS'__getitem__'
+p20
+S"<method-wrapper '__getitem__' of exceptions.ImportError object>"
+p21
+sS'__setstate__'
+p22
+S'<built-in method __setstate__ of exceptions.ImportError object>'
+p23
+sS'args'
+p24
+S"('No module named bootup.modules.bootup',)"
+p25
+sS'__reduce__'
+p26
+S'<built-in method __reduce__ of exceptions.ImportError object>'
+p27
+sS'__str__'
+p28
+S"<method-wrapper '__str__' of exceptions.ImportError object>"
+p29
+sS'__format__'
+p30
+S'<built-in method __format__ of exceptions.ImportError object>'
+p31
+sS'__getattribute__'
+p32
+S"<method-wrapper '__getattribute__' of exceptions.ImportError object>"
+p33
+sS'__class__'
+p34
+S"<type 'exceptions.ImportError'>"
+p35
+sS'__unicode__'
+p36
+S'<built-in method __unicode__ of exceptions.ImportError object>'
+p37
+sS'__delattr__'
+p38
+S"<method-wrapper '__delattr__' of exceptions.ImportError object>"
+p39
+sS'__subclasshook__'
+p40
+S'<built-in method __subclasshook__ of type object>'
+p41
+sS'__repr__'
+p42
+S"<method-wrapper '__repr__' of exceptions.ImportError object>"
+p43
+sS'__dict__'
+p44
+S'{}'
+p45
+sS'__sizeof__'
+p46
+S'<built-in method __sizeof__ of exceptions.ImportError object>'
+p47
+sS'__doc__'
+p48
+S'"Import can\'t find module, or can\'t find name in module."'
+p49
+sS'__init__'
+p50
+S"<method-wrapper '__init__' of exceptions.ImportError object>"
+p51
+sS'__new__'
+p52
+S'<built-in method __new__ of type object>'
+p53
+ssS'evalue'
+p54
+S'No module named bootup.modules.bootup'
+p55
+sS'request'
+p56
+cgluon.html
+XML_unpickle
+p57
+(S's\xb5P\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">ajax</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">application</td><td style="vertical-align:top;">:</td><td><div>bootup</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cid</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">client</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">controller</td><td style="vertical-align:top;">:</td><td><div>default</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cookies</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">session_id_welcome</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-f56732a5-0952-40c8-8b1d-b66c8b99a01d<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">env</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT</td><td style="vertical-align:top;">:</td><td><div>text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT_ENCODING</td><td style="vertical-align:top;">:</td><td><div>gzip, deflate, sdch</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_ACCEPT_LANGUAGE</td><td style="vertical-align:top;">:</td><td><div>en-US,en;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_CONNECTION</td><td style="vertical-align:top;">:</td><td><div>keep-alive</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_COOKIE</td><td style="vertical-align:top;">:</td><td><div>session_id_welcome=127.0.0.1-f56732a5-0952-40c8-8b1d-b66c8b99a01d</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_HOST</td><td style="vertical-align:top;">:</td><td><div>localhost:8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">HTTP_USER_AGENT</td><td style="vertical-align:top;">:</td><td><div>Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.99 Safari/537.36</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">PATH_INFO</td><td style="vertical-align:top;">:</td><td><div>/bootup</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">QUERY_STRING</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_ADDR</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REMOTE_PORT</td><td style="vertical-align:top;">:</td><td><div>56134</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">REQUEST_METHOD</td><td style="vertical-align:top;">:</td><td><div>GET</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SCRIPT_NAME</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_NAME</td><td style="vertical-align:top;">:</td><td><div>nas10-240-74-34.york.ac.uk</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PORT</td><td style="vertical-align:top;">:</td><td><div>8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_PROTOCOL</td><td style="vertical-align:top;">:</td><td><div>HTTP/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">SERVER_SOFTWARE</td><td style="vertical-align:top;">:</td><td><div>Rocket 1.2.6</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">app_folders</td><td style="vertical-align:top;">:</td><td><div>set([&#x27;/Users/Samuel/Documents/University/IAPT/web2py/applications/Bootup/&#x27;, &#x27;/Users/Samuel/Documents/University/IAPT/web2py/applications/bootup/&#x27;, &#x27;/Users/Samuel/Documents/University/IAPT/web2py/applications/welcome/&#x27;])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">applications_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/Samuel/Documents/University/IAPT/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_options</td><td style="vertical-align:top;">:</td><td><div>&lt;Values at 0x105878320: {&#x27;verbose&#x27;: False, &#x27;ip&#x27;: &#x27;127.0.0.1&#x27;, &#x27;debuglevel&#x27;: 30, &#x27;with_scheduler&#x27;: False, &#x27;ips&#x27;: [&#x27;10.240.74.34&#x27;], &#x27;shutdown_timeout&#x27;: 5, &#x27;taskbar&#x27;: False, &#x27;with_coverage&#x27;: False, &#x27;scheduler_groups&#x27;: None, &#x27;port&#x27;: 8000, &#x27;maxthreads&#x27;: None, &#x27;softcron&#x27;: False, &#x27;server_name&#x27;: &#x27;nas10-240-74-34.york.ac.uk&#x27;, &#x27;bpython&#x27;: False, &#x27;nogui&#x27;: False, &#x27;pid_filename&#x27;: &#x27;httpserver.pid&#x27;, &#x27;extcron&#x27;: False, &#x27;runcron&#x27;: False, &#x27;run_system_tests&#x27;: False, &#x27;test&#x27;: None, &#x27;folder&#x27;: &#x27;/Users/Samuel/Documents/University/IAPT/web2py&#x27;, &#x27;config&#x27;: &#x27;&#x27;, &#x27;minthreads&#x27;: None, &#x27;shell&#x27;: None, &#x27;run&#x27;: &#x27;&#x27;, &#x27;log_filename&#x27;: &#x27;httpserver.log&#x27;, &#x27;profiler_dir&#x27;: None, &#x27;args&#x27;: [&#x27;&#x27;], &#x27;socket_timeout&#x27;: 5, &#x27;ssl_ca_certificate&#x27;: None, &#x27;scheduler&#x27;: None, &#x27;interfaces&#x27;: None, &#x27;ssl_private_key&#x27;: &#x27;&#x27;, &#x27;gae&#x27;: None, &#x27;password&#x27;: &#x27;&lt;ask&gt;&#x27;, &#x27;request_queue_size&#x27;: 5, &#x27;ssl_certificate&#x27;: &#x27;&#x27;, &#x27;cronjob&#x27;: False, &#x27;numthreads&#x27;: None, &#x27;quiet&#x27;: False, &#x27;import_models&#x27;: False, &#x27;timeout&#x27;: 10, &#x27;plain&#x27;: False, &#x27;nobanner&#x27;: False}&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">db_sessions</td><td style="vertical-align:top;">:</td><td><div>set([])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">debugging</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gluon_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/Samuel/Documents/University/IAPT/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept</td><td style="vertical-align:top;">:</td><td><div>text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept_encoding</td><td style="vertical-align:top;">:</td><td><div>gzip, deflate, sdch</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_accept_language</td><td style="vertical-align:top;">:</td><td><div>en-US,en;q=0.8</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_connection</td><td style="vertical-align:top;">:</td><td><div>keep-alive</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_cookie</td><td style="vertical-align:top;">:</td><td><div>session_id_welcome=127.0.0.1-f56732a5-0952-40c8-8b1d-b66c8b99a01d</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_host</td><td style="vertical-align:top;">:</td><td><div>localhost:8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">http_user_agent</td><td style="vertical-align:top;">:</td><td><div>Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.99 Safari/537.36</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_jython</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_pypy</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_source</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_hosts</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>nas10-240-74-34.york.ac.uk</div></td></tr><tr><td><div>::1</div></td></tr><tr><td><div>::ffff:127.0.0.1</div></td></tr><tr><td><div>127.0.0.1</div></td></tr><tr><td><div>10.240.74.34</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path_info</td><td style="vertical-align:top;">:</td><td><div>/bootup</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">query_string</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_addr</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">remote_port</td><td style="vertical-align:top;">:</td><td><div>56134</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">request_method</td><td style="vertical-align:top;">:</td><td><div>GET</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">request_uri</td><td style="vertical-align:top;">:</td><td><div>/bootup</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">script_name</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_name</td><td style="vertical-align:top;">:</td><td><div>nas10-240-74-34.york.ac.uk</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_port</td><td style="vertical-align:top;">:</td><td><div>8000</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_protocol</td><td style="vertical-align:top;">:</td><td><div>HTTP/1.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">server_software</td><td style="vertical-align:top;">:</td><td><div>Rocket 1.2.6</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_path</td><td style="vertical-align:top;">:</td><td><div>/Users/Samuel/Documents/University/IAPT/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_version</td><td style="vertical-align:top;">:</td><td><div>2.9.11-stable+timestamp.2014.09.15.23.35.11</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.errors</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;&lt;stderr&gt;&#x27;, mode &#x27;w&#x27; at 0x1039991e0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.file_wrapper</td><td style="vertical-align:top;">:</td><td><div>&lt;class wsgiref.util.FileWrapper at 0x1045d97a0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.input</td><td style="vertical-align:top;">:</td><td><div>&lt;socket._fileobject object at 0x109b225d0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.multiprocess</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.multithread</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.run_once</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.url_scheme</td><td style="vertical-align:top;">:</td><td><div>http</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi.version</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>1</div></td></tr><tr><td><div>0</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_errors</td><td style="vertical-align:top;">:</td><td><div>&lt;open file &#x27;&lt;stderr&gt;&#x27;, mode &#x27;w&#x27; at 0x1039991e0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_file_wrapper</td><td style="vertical-align:top;">:</td><td><div>&lt;class wsgiref.util.FileWrapper at 0x1045d97a0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_input</td><td style="vertical-align:top;">:</td><td><div>&lt;socket._fileobject object at 0x109b225d0&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_multiprocess</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_multithread</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_run_once</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_url_scheme</td><td style="vertical-align:top;">:</td><td><div>http</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi_version</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>1</div></td></tr><tr><td><div>0</div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">extension</td><td style="vertical-align:top;">:</td><td><div>html</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">folder</td><td style="vertical-align:top;">:</td><td><div>/Users/Samuel/Documents/University/IAPT/web2py/applications/bootup/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">function</td><td style="vertical-align:top;">:</td><td><div>index</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">global_settings</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">app_folders</td><td style="vertical-align:top;">:</td><td><div>set([&#x27;/Users/Samuel/Documents/University/IAPT/web2py/applications/Bootup/&#x27;, &#x27;/Users/Samuel/Documents/University/IAPT/web2py/applications/bootup/&#x27;, &#x27;/Users/Samuel/Documents/University/IAPT/web2py/applications/welcome/&#x27;])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">applications_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/Samuel/Documents/University/IAPT/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_args</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cmd_options</td><td style="vertical-align:top;">:</td><td><div>&lt;Values at 0x105878320: {&#x27;verbose&#x27;: False, &#x27;ip&#x27;: &#x27;127.0.0.1&#x27;, &#x27;debuglevel&#x27;: 30, &#x27;with_scheduler&#x27;: False, &#x27;ips&#x27;: [&#x27;10.240.74.34&#x27;], &#x27;shutdown_timeout&#x27;: 5, &#x27;taskbar&#x27;: False, &#x27;with_coverage&#x27;: False, &#x27;scheduler_groups&#x27;: None, &#x27;port&#x27;: 8000, &#x27;maxthreads&#x27;: None, &#x27;softcron&#x27;: False, &#x27;server_name&#x27;: &#x27;nas10-240-74-34.york.ac.uk&#x27;, &#x27;bpython&#x27;: False, &#x27;nogui&#x27;: False, &#x27;pid_filename&#x27;: &#x27;httpserver.pid&#x27;, &#x27;extcron&#x27;: False, &#x27;runcron&#x27;: False, &#x27;run_system_tests&#x27;: False, &#x27;test&#x27;: None, &#x27;folder&#x27;: &#x27;/Users/Samuel/Documents/University/IAPT/web2py&#x27;, &#x27;config&#x27;: &#x27;&#x27;, &#x27;minthreads&#x27;: None, &#x27;shell&#x27;: None, &#x27;run&#x27;: &#x27;&#x27;, &#x27;log_filename&#x27;: &#x27;httpserver.log&#x27;, &#x27;profiler_dir&#x27;: None, &#x27;args&#x27;: [&#x27;&#x27;], &#x27;socket_timeout&#x27;: 5, &#x27;ssl_ca_certificate&#x27;: None, &#x27;scheduler&#x27;: None, &#x27;interfaces&#x27;: None, &#x27;ssl_private_key&#x27;: &#x27;&#x27;, &#x27;gae&#x27;: None, &#x27;password&#x27;: &#x27;&lt;ask&gt;&#x27;, &#x27;request_queue_size&#x27;: 5, &#x27;ssl_certificate&#x27;: &#x27;&#x27;, &#x27;cronjob&#x27;: False, &#x27;numthreads&#x27;: None, &#x27;quiet&#x27;: False, &#x27;import_models&#x27;: False, &#x27;timeout&#x27;: 10, &#x27;plain&#x27;: False, &#x27;nobanner&#x27;: False}&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">db_sessions</td><td style="vertical-align:top;">:</td><td><div>set([])</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">debugging</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">gluon_parent</td><td style="vertical-align:top;">:</td><td><div>/Users/Samuel/Documents/University/IAPT/web2py</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_jython</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_pypy</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_source</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">local_hosts</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>nas10-240-74-34.york.ac.uk</div></td></tr><tr><td><div>::1</div></td></tr><tr><td><div>::ffff:127.0.0.1</div></td></tr><tr><td><div>127.0.0.1</div></td></tr><tr><td><div>10.240.74.34</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">web2py_version</td><td style="vertical-align:top;">:</td><td><div>2.9.11-stable+timestamp.2014.09.15.23.35.11</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_https</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_local</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_restful</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_sheduler</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">is_shell</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">now</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2015, 1, 22, 10, 34, 5, 226325)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">raw_args</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">raw_extension</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">url</td><td style="vertical-align:top;">:</td><td><div>/bootup</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">utcnow</td><td style="vertical-align:top;">:</td><td><div>datetime.datetime(2015, 1, 22, 10, 34, 5, 226331)</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">uuid</td><td style="vertical-align:top;">:</td><td><div>bootup/127.0.0.1.2015-01-22.10-34-05.b1f1c21f-d417-4545-95e2-09a720503358</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">wsgi</td><td style="vertical-align:top;">:</td><td><div>&lt;gluon.main.LazyWSGI object at 0x10b891910&gt;</div></td></tr></table></div>'
+tRp58
+sS'frames'
+p59
+(lp60
+(dp61
+S'file'
+p62
+S'/Users/Samuel/Documents/University/IAPT/web2py/gluon/restricted.py'
+p63
+sS'dump'
+p64
+(dp65
+S'environment'
+p66
+S"{'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'ASSIGNJS': <function ASSIGNJS>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, 'CAT': <class 'gluon.html.CAT'>, ...}"
+p67
+sS'ccode'
+p68
+S'<code object <module> at 0x10b8b3330, file "/Use...lications/bootup/controllers/default.py", line 4>'
+p69
+ssS'lnum'
+p70
+I224
+sS'lines'
+p71
+(dp72
+I224
+S'        exec ccode in environment'
+p73
+sI225
+S'    except HTTP:'
+p74
+sI226
+S'        raise'
+p75
+sI227
+S'    except RestrictedError:'
+p76
+sI228
+S'        # do not encapsulate (obfuscate) the original RestrictedError'
+p77
+sI219
+S'    try:'
+p78
+sI220
+S'        if isinstance(code, types.CodeType):'
+p79
+sI221
+S'            ccode = code'
+p80
+sI222
+S'        else:'
+p81
+sI223
+S'            ccode = compile2(code, layer)'
+p82
+ssS'call'
+p83
+S"(code='# -*- coding: utf-8 -*-\\n# Candidate number: Y007...m=auth())\\nresponse._vars=response._caller(index)\\n', environment={'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'ASSIGNJS': <function ASSIGNJS>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, 'CAT': <class 'gluon.html.CAT'>, ...}, layer='/Users/Samuel/Documents/University/IAPT/web2py/applications/bootup/controllers/default.py')"
+p84
+sS'func'
+p85
+S'restricted'
+p86
+sa(dp87
+g62
+S'/Users/Samuel/Documents/University/IAPT/web2py/applications/bootup/controllers/default.py'
+p88
+sg64
+(dp89
+S'bootup'
+p90
+S'undefined'
+p91
+sS'notNone'
+p92
+g91
+ssg70
+I6
+sg71
+(dp93
+I2
+S'# Candidate number: Y0073045'
+p94
+sI3
+S''
+sI4
+S'import datetime'
+p95
+sI5
+S''
+sI6
+S'from bootup import notNone'
+p96
+sI7
+S''
+sI8
+S'def index():'
+p97
+sI9
+S'\tnewestFiveBootables = db(db.BootablesWithTotalPledged.state == 0).select(orderby=~db.BootablesWithTotalPledged.dateCreated)[0:5]'
+p98
+sI10
+S'\tnewestFiveBootables.compact = False'
+p99
+sI11
+S'\tnewestFiveBootables = notNone(newestFiveBootables)'
+p100
+ssg83
+S'()'
+p101
+sg85
+S'<module>'
+p102
+sa(dp103
+g62
+S'/Users/Samuel/Documents/University/IAPT/web2py/gluon/custom_import.py'
+p104
+sg64
+(dp105
+S'fromlist'
+p106
+S"('notNone',)"
+p107
+sS'level'
+p108
+S'-1'
+p109
+sS'base_importer'
+p110
+S'<built-in function __import__>'
+p111
+sS'globals'
+p112
+S"{'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'ASSIGNJS': <function ASSIGNJS>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, 'CAT': <class 'gluon.html.CAT'>, ...}"
+p113
+sS'pname'
+p114
+S"'applications.bootup.modules.bootup'"
+p115
+sS'locals'
+p116
+S"{'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'ASSIGNJS': <function ASSIGNJS>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, 'CAT': <class 'gluon.html.CAT'>, ...}"
+p117
+ssg70
+I92
+sg71
+(dp118
+I96
+S'                return NATIVE_IMPORTER(name, globals, locals, fromlist, level)'
+p119
+sI87
+S'                        modules_prefix += "." + itemname'
+p120
+sI88
+S'                    return result'
+p121
+sI89
+S'                else:'
+p122
+sI90
+S'                    # import like "from x import a, b, ..."'
+p123
+sI91
+S'                    pname = modules_prefix + "." + name'
+p124
+sI92
+S'                    return base_importer(pname, globals, locals, fromlist, level)'
+p125
+sI93
+S'        except ImportError, e1:'
+p126
+sI94
+S'            import_tb = sys.exc_info()[2]'
+p127
+sI95
+S'            try:'
+p128
+ssg83
+S"(name='bootup', globals={'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'ASSIGNJS': <function ASSIGNJS>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, 'CAT': <class 'gluon.html.CAT'>, ...}, locals={'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'ASSIGNJS': <function ASSIGNJS>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, 'CAT': <class 'gluon.html.CAT'>, ...}, fromlist=('notNone',), level=-1)"
+p129
+sg85
+S'custom_importer'
+p130
+sasS'pyver'
+p131
+S'Python 2.7.6: /usr/bin/python (prefix: /System/Library/Frameworks/Python.framework/Versions/2.7)'
+p132
+sS'session'
+p133
+g57
+(S's\x1a\x00\x00\x00<div><table></table></div>'
+tRp134
+sS'etype'
+p135
+S"<type 'exceptions.ImportError'>"
+p136
+sS'date'
+p137
+S'Thu Jan 22 10:34:05 2015'
+p138
+sS'response'
+p139
+g57
+(S's\x962\x00\x00<div><table><tr><td style="font-weight:bold;vertical-align:top;">body</td><td style="vertical-align:top;">:</td><td><div>&lt;cStringIO.StringO object at 0x10b9140d8&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">cookies</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">session_id_bootup</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-3872ee6a-fb55-4694-81dd-6e49ea87d17a<table><tr><td style="font-weight:bold;vertical-align:top;">comment</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">domain</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">expires</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">httponly</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">max-age</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">path</td><td style="vertical-align:top;">:</td><td><div>/</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">secure</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">version</td><td style="vertical-align:top;">:</td><td><div></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">delimiters</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>{{</div></td></tr><tr><td><div>}}</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">files</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">flash</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">form_label_separator</td><td style="vertical-align:top;">:</td><td><div>: </div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">formstyle</td><td style="vertical-align:top;">:</td><td><div>table3cols</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">generic_patterns</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>*</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">google_analytics_id</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">headers</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">X-Powered-By</td><td style="vertical-align:top;">:</td><td><div>web2py</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">logo</td><td style="vertical-align:top;">:</td><td><div><a class="brand" href="http://www.web2py.com/"><b>web<span>2</span>py</b>&trade;&nbsp;</a></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">menu</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div><table><tr><td><div>Home</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/bootup/default/index</div></td></tr><tr><td><div><table></table></div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div><span class="highlighted">web2py</span></div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>http://web2py.com</div></td></tr><tr><td><div><table><tr><td><div><table><tr><td><div>My Sites</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/admin/default/site</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>This App</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>/admin/default/design/bootup</div></td></tr><tr><td><div>[(&lt;lazyT &#x27;Controller&#x27;&gt;, False, &#x27;/admin/default/edit/bootup/controllers/default.py&#x27;), (&lt;lazyT &#x27;View&#x27;&gt;, False, &#x27;/admin/default/edit/bootup/views/default/index.html&#x27;), (&lt;lazyT &#x27;Layout&#x27;&gt;, False, &#x27;/admin/default/edit/bootup/views/layout.html&#x27;), (&lt;lazyT &#x27;Stylesheet&#x27;&gt;, False, &#x27;/admin/default/edit/bootup/static/css/web2py.css&#x27;), (&lt;lazyT &#x27;DB Model&#x27;&gt;, False, &#x27;/admin/default/edit/bootup/models/db.py&#x27;), (&lt;lazyT &#x27;Menu Model&#x27;&gt;, False, &#x27;/admin/default/edit/bootup/models/menu.py&#x27;), (&lt;lazyT &#x27;Database&#x27;&gt;, False, &#x27;/bootup/appadmin/index&#x27;), (&lt;lazyT &#x27;Errors&#x27;&gt;, False, &#x27;/admin/default/errors/bootup&#x27;), (&lt;lazyT &#x27;About&#x27;&gt;, False, &#x27;/admin/default/about/bootup&#x27;)]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>web2py.com</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>http://www.web2py.com</div></td></tr><tr><td><div>[(&lt;lazyT &#x27;Download&#x27;&gt;, False, &#x27;http://www.web2py.com/examples/default/download&#x27;), (&lt;lazyT &#x27;Support&#x27;&gt;, False, &#x27;http://www.web2py.com/examples/default/support&#x27;), (&lt;lazyT &#x27;Demo&#x27;&gt;, False, &#x27;http://web2py.com/demo_admin&#x27;), (&lt;lazyT &#x27;Quick Examples&#x27;&gt;, False, &#x27;http://web2py.com/examples/default/examples&#x27;), (&lt;lazyT &#x27;FAQ&#x27;&gt;, False, &#x27;http://web2py.com/AlterEgo&#x27;), (&lt;lazyT &#x27;Videos&#x27;&gt;, False, &#x27;http://www.web2py.com/examples/default/videos/&#x27;), (&lt;lazyT &#x27;Free Applications&#x27;&gt;, False, &#x27;http://web2py.com/appliances&#x27;), (&lt;lazyT &#x27;Plugins&#x27;&gt;, False, &#x27;http://web2py.com/plugins&#x27;), (&lt;lazyT &#x27;Layouts&#x27;&gt;, False, &#x27;http://web2py.com/layouts&#x27;), (&lt;lazyT &#x27;Recipes&#x27;&gt;, False, &#x27;http://web2pyslices.com/&#x27;), (&lt;lazyT &#x27;Semantic&#x27;&gt;, False, &#x27;http://web2py.com/semantic&#x27;)]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Documentation</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>http://www.web2py.com/book</div></td></tr><tr><td><div>[(&lt;lazyT &#x27;Preface&#x27;&gt;, False, &#x27;http://www.web2py.com/book/default/chapter/00&#x27;), (&lt;lazyT &#x27;Introduction&#x27;&gt;, False, &#x27;http://www.web2py.com/book/default/chapter/01&#x27;), (&lt;lazyT &#x27;Python&#x27;&gt;, False, &#x27;http://www.web2py.com/book/default/chapter/02&#x27;), (&lt;lazyT &#x27;Overview&#x27;&gt;, False, &#x27;http://www.web2py.com/book/default/chapter/03&#x27;), (&lt;lazyT &#x27;The Core&#x27;&gt;, False, &#x27;http://www.web2py.com/book/default/chapter/04&#x27;), (&lt;lazyT &#x27;The Views&#x27;&gt;, False, &#x27;http://www.web2py.com/book/default/chapter/05&#x27;), (&lt;lazyT &#x27;Database&#x27;&gt;, False, &#x27;http://www.web2py.com/book/default/chapter/06&#x27;), (&lt;lazyT &#x27;Forms and Validators&#x27;&gt;, False, &#x27;http://www.web2py.com/book/default/chapter/07&#x27;), (&lt;lazyT &#x27;Email and SMS&#x27;&gt;, False, &#x27;http://www.web2py.com/book/default/chapter/08&#x27;), (&lt;lazyT &#x27;Access Control&#x27;&gt;, False, &#x27;http://www.web2py.com/book/default/chapter/09&#x27;), (&lt;lazyT &#x27;Services&#x27;&gt;, False, &#x27;http://www.web2py.com/book/default/chapter/10&#x27;), (&lt;lazyT &#x27;Ajax Recipes&#x27;&gt;, False, &#x27;http://www.web2py.com/book/default/chapter/11&#x27;), (&lt;lazyT &#x27;Components and Plugins&#x27;&gt;, False, &#x27;http://www.web2py.com/book/default/chapter/12&#x27;), (&lt;lazyT &#x27;Deployment Recipes&#x27;&gt;, False, &#x27;http://www.web2py.com/book/default/chapter/13&#x27;), (&lt;lazyT &#x27;Other Recipes&#x27;&gt;, False, &#x27;http://www.web2py.com/book/default/chapter/14&#x27;), (&lt;lazyT &#x27;Buy this book&#x27;&gt;, False, &#x27;http://stores.lulu.com/web2py&#x27;)]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Community</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>None</div></td></tr><tr><td><div>[(&lt;lazyT &#x27;Groups&#x27;&gt;, False, &#x27;http://www.web2py.com/examples/default/usergroups&#x27;), (&lt;lazyT &#x27;Twitter&#x27;&gt;, False, &#x27;http://twitter.com/web2py&#x27;), (&lt;lazyT &#x27;Live Chat&#x27;&gt;, False, &#x27;http://webchat.freenode.net/?channels=web2py&#x27;)]</div></td></tr></table></div></td></tr><tr><td><div><table><tr><td><div>Plugins</div></td></tr><tr><td><div>False</div></td></tr><tr><td><div>None</div></td></tr><tr><td><div>[(&#x27;plugin_wiki&#x27;, False, &#x27;http://web2py.com/examples/default/download&#x27;), (&lt;lazyT &#x27;Other Plugins&#x27;&gt;, False, &#x27;http://web2py.com/plugins&#x27;), (&lt;lazyT &#x27;Layout Plugins&#x27;&gt;, False, &#x27;http://web2py.com/layouts&#x27;)]</div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">meta</td><td style="vertical-align:top;">:</td><td><div><table><tr><td style="font-weight:bold;vertical-align:top;">author</td><td style="vertical-align:top;">:</td><td><div>Your Name &lt;you@example.com&gt;</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">generator</td><td style="vertical-align:top;">:</td><td><div>Web2py Web Framework</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">keywords</td><td style="vertical-align:top;">:</td><td><div>web2py, python, framework</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">models_to_run</td><td style="vertical-align:top;">:</td><td><div><table><tr><td><div>^\\w+\\.py$</div></td></tr><tr><td><div>^default/\\w+\\.py$</div></td></tr><tr><td><div>^default/index/\\w+\\.py$</div></td></tr></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">postprocessing</td><td style="vertical-align:top;">:</td><td><div><table></table></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_client</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_compression_level</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_expires</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_cookie_key</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_data_name</td><td style="vertical-align:top;">:</td><td><div>session_data_bootup</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_file</td><td style="vertical-align:top;">:</td><td><div>None</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_filename</td><td style="vertical-align:top;">:</td><td><div>/Users/Samuel/Documents/University/IAPT/web2py/applications/bootup/sessions/127.0.0.1-3872ee6a-fb55-4694-81dd-6e49ea87d17a</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_hash</td><td style="vertical-align:top;">:</td><td><div>c0762cbf4baf7f9af97c051e7fcb8083</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id</td><td style="vertical-align:top;">:</td><td><div>127.0.0.1-3872ee6a-fb55-4694-81dd-6e49ea87d17a</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_id_name</td><td style="vertical-align:top;">:</td><td><div>session_id_bootup</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_masterapp</td><td style="vertical-align:top;">:</td><td><div>bootup</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_new</td><td style="vertical-align:top;">:</td><td><div>True</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">session_storage_type</td><td style="vertical-align:top;">:</td><td><div>file</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">status</td><td style="vertical-align:top;">:</td><td><div>200</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">subtitle</td><td style="vertical-align:top;">:</td><td><div></div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">title</td><td style="vertical-align:top;">:</td><td><div>Bootup</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">userNeedsToEnterPaymentInfo</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">userNeedsToEnterShippingAddress</td><td style="vertical-align:top;">:</td><td><div>False</div></td></tr><tr><td style="font-weight:bold;vertical-align:top;">view</td><td style="vertical-align:top;">:</td><td><div>default/index.html</div></td></tr></table></div>'
+tRp140
+sS'locals'
+p141
+(dp142
+S'fromlist'
+p143
+S"('notNone',)"
+p144
+sS'modules_prefix'
+p145
+S"'applications.bootup.modules'"
+p146
+sS'name'
+p147
+S"'bootup'"
+p148
+sS'level'
+p149
+S'-1'
+p150
+sS'items'
+p151
+S"['', 'Users', 'Samuel', 'Documents', 'University', 'IAPT', 'web2py', 'applications', 'bootup']"
+p152
+sS'base_importer'
+p153
+S'<built-in function __import__>'
+p154
+sS'globals'
+p155
+S"{'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'ASSIGNJS': <function ASSIGNJS>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, 'CAT': <class 'gluon.html.CAT'>, ...}"
+p156
+sS'pname'
+p157
+S"'applications.bootup.modules.bootup'"
+p158
+sS'e3'
+p159
+S"ImportError('No module named bootup',)"
+p160
+sS'e1'
+p161
+S"ImportError('No module named bootup.modules.bootup',)"
+p162
+sS'import_tb'
+p163
+S'None'
+p164
+sg141
+S"{'A': <class 'gluon.html.A'>, 'ANY_OF': <class 'gluon.validators.ANY_OF'>, 'ASSIGNJS': <function ASSIGNJS>, 'Auth': <class 'gluon.tools.Auth'>, 'B': <class 'gluon.html.B'>, 'BEAUTIFY': <class 'gluon.html.BEAUTIFY'>, 'BODY': <class 'gluon.html.BODY'>, 'BR': <class 'gluon.html.BR'>, 'BUTTON': <class 'gluon.html.BUTTON'>, 'CAT': <class 'gluon.html.CAT'>, ...}"
+p165
+sS'oname'
+p166
+S"'bootup'"
+p167
+sssS'traceback'
+p168
+S'Traceback (most recent call last):\n  File "/Users/Samuel/Documents/University/IAPT/web2py/gluon/restricted.py", line 224, in restricted\n    exec ccode in environment\n  File "/Users/Samuel/Documents/University/IAPT/web2py/applications/bootup/controllers/default.py", line 6, in <module>\n    from bootup import notNone\n  File "/Users/Samuel/Documents/University/IAPT/web2py/gluon/custom_import.py", line 92, in custom_importer\n    return base_importer(pname, globals, locals, fromlist, level)\nImportError: No module named bootup.modules.bootup\n'
+p169
+s.

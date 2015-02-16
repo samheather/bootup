@@ -1,0 +1,52 @@
+<!-- Candidate number: Y0073045 -->
+{{extend 'bootup-layout.html'}}
+
+<div class="container">
+	<h1>Your Account Details</h1>
+	<div class="panel panel-success panel-primary">
+		<div class="panel-heading"><h2>You've pledged £{{=totalPledged}} on {{=numberOfPledges}} Bootables.</h2></div>
+	</div>
+	<div class="col-xs-12 col-sm-6 view-left-column">
+		<div class="col-xs-12 panel panel-default profile-information-box">
+			<div class="panel-body">
+				<h4>Edit Profile</h4>
+				<p>First Name: {{=userRecord.first_name}}</p>
+				<p>Last Name: {{=userRecord.last_name}}</p>
+				<p>E-Mail Address: {{=userRecord.email}}</p>
+				<p>Username: {{=userRecord.username}}</p>
+				<p>Birthdate: {{=userRecord.birthdate}}</p>
+				<p><a class="btn btn-primary" href="{{=URL('default', 'auth_user', args='profile')}}" role="button">Edit Profile Information &raquo;</a></p>
+				<p><a class="btn btn-primary" href="{{=URL('default', 'auth_user', args='change_password')}}" role="button">Change Password &raquo;</a></p>
+			</div>
+		</div>
+		<div class="col-xs-12 panel panel-default profile-information-box">
+			<div class="panel-body">
+				<h4>Credit Card</h4>
+				<p>Number: {{=creditCard.cardNumber}}</p>
+				<p>Expiry Date: {{=creditCard.expiryDate}}</p>
+				<p>Pin: {{=creditCard.pin}}</p>
+				<p><a class="btn btn-primary" href="{{=URL('user', 'editProfile', args=['CreditCard', creditCard.id])}}" role="button">Edit Card &raquo;</a></p>
+			</div>
+		</div>
+	</div>
+	<div class="col-xs-12 col-sm-6 view-left-column">
+		<div class="col-xs-12 panel panel-default profile-information-box">
+			<div class="panel-body">
+				<h4>Shipping Address</h4>
+				{{address = shippingAddress}}
+				{{include "subviews/display-address.html"}}
+			</div>
+		</div>
+		<div class="col-xs-12 panel panel-default profile-information-box">
+			<div class="panel-body">
+				<h4>Billing Address</h4>
+				{{address = billingAddress}}
+				{{include "subviews/display-address.html"}}
+			</div>
+		</div>
+	</div>
+</div>
+
+<script>
+
+</script>

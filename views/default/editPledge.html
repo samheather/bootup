@@ -1,0 +1,80 @@
+<!-- Candidate number: Y0073045 -->
+{{extend 'bootup-layout.html'}}
+
+<div class="container">
+	<h2>Add/Edit Rewards and Pledges for "{{=thisBootable.title}}"</h2>
+	<div class="col-xs-12 col-sm-6">
+		<h3>Add New Reward</h3>
+		
+		{{=rewardsForm}}
+		
+		<h3>Current Rewards</h3>
+		
+		<table class="table table-striped">
+			<tr>
+				<th>Reward</th>
+				<th>Options</th>
+			</tr>
+			{{for reward in existingRewards:}}
+				<tr>
+					<td>
+						{{=reward.reward}}
+					</td>
+					<td style="min-width:150px;">
+						<p><a class="btn btn-primary" href="{{=URL('default', 'editReward', args=[request.args(0),reward.id])}}" role="button">Edit</a>
+						{{if reward.id not in rewardsInPledges:}}
+							<a class="btn btn-primary" href="{{=URL('default', 'deleteReward', args=[request.args(0),reward.id])}}" role="button">Delete</a></p>
+						{{else:}}
+							<!-- Wrap button in a arbituary tag (not div) to which a floating tool-tip can be applied. -->
+							<b data-toggle="tooltip" data-placement="top" title="Can not delete a reward that is in a Pledge Option">
+								<a disabled class="btn btn-primary" href="" role="button">Delete</a></p>
+							</b>
+						{{pass}}
+					</td>
+				</tr>
+			{{pass}}
+		</table>
+		
+	</div>
+	<div class="col-xs-12 col-sm-6">
+		<h3>Add New Pledge Options</h3>
+		{{=addPledgeForm}}
+		
+		<h3>Current Pledge Options</h3>
+		<table class="table table-striped">
+			<tr>
+				<th>Pledge Name</th>
+				<th>Price</th>
+				<th>Rewards</th>
+				<th>Options</th>
+			</tr>
+			{{for pledge in existingPledgeOptions:}}
+				<tr>
+					<td>
+						{{=pledge.pledgeTitle}}
+					</td>
+					<td>
+						{{=pledge.price}}
+					</td>
+					<td>
+						<ul>
+							{{for reward in pledge.rewardsForThisPledgeOption.split(","):}}
+								<li>{{=reward}}</li>
+							{{pass}}
+						</ul>
+					</td>
+					<td>
+					<a class="btn btn-primary" href="{{=URL('default', 'deletePledge', args=[pledge.bootable_id, pledge.id])}}" role="button">Delete</a>
+					</td>
+				</tr>
+			{{pass}}
+		</table>
+	</div>
+</div>
+
+<center>
+	<a class="btn btn-primary btn-lg" href="{{=URL('user', 'profile')}}" role="button">Done - go to Profile</a>
+</center>
+
+
+{{end}}

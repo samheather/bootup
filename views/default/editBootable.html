@@ -1,0 +1,15 @@
+<!-- Candidate number: Y0073045 -->
+{{extend 'bootup-layout.html'}}
+
+<div class="container">
+	<h1>Edit Bootable</h1>
+	<div class="col-xs-12 col-sm-8">
+		{{=response.flash}}
+		{{=editBootableForm}}
+	</div>
+		<div class="col-xs-12 col-sm-4">
+		<p><a class="btn btn-primary btn-lg" href="{{=URL('default', 'editPledge', args=request.args(0))}}" role="button">Edit Rewards and Pledges &raquo;</a></p>
+	</div>
+</div>
+
+{{end}}

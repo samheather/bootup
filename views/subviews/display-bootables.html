@@ -1,0 +1,44 @@
+<!-- Candidate number: Y0073045 -->
+<div id="bootables">
+<div class="row">
+	{{for bootable in bootables:}}
+		<div class="col-xs-12 col-sm-6 col-md-3 view">
+		<div class="panel panel-default">
+<!-- 		TODO Factor out the below CSS -->
+		<div style="padding:0px;" class="panel-body">
+
+		<a href="{{=URL('default', 'view', args=bootable.BootablesWithTotalPledged.id)}}"><img src="{{=URL('default', 'download', args=bootable.BootablesWithTotalPledged.image)}}" class="panel-image"/></a>
+	
+		<div class="panel-text">
+		
+		<h3>{{=bootable.BootablesWithTotalPledged.title}}</h3>
+		
+<!-- 
+		<center>
+			<div class="panel panel-default panel-success login-register-form">
+				<div class="panel-heading">You backed this Bootable</div>
+			</div>
+		</center>
+ -->
+		
+		<p>{{=bootable.BootablesWithTotalPledged.shortDescription}}</p>
+		
+		</div>
+		
+		<center>
+		<div class="col-xs-4"><h5>Raised:</h5>£{{=bootable.BootablesWithTotalPledged.raised}}</div>
+		<div class="col-xs-4"><h5>Goal:</h5>£{{=bootable.BootablesWithTotalPledged.fundingGoal}}</div>
+		<div class="col-xs-4"><h5>Funded:</h5>{{=bootable.BootablesWithTotalPledged.percentageComplete}}%</div>
+		</center>
+		
+<!-- 		TODO factor out the below inline css -->
+		</br></br></br></br>
+		<div style="margin:0px;" class="progress progress-bar-top-corners">
+			<div class="progress-bar progress-bar" role="progressbar" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100" style="width: {{=min(100,bootable.BootablesWithTotalPledged.percentageComplete)}}%">
+			</div>
+		</div>
+		</div>
+		</div>
+		</div>
+	{{pass}}
+</div>

@@ -1,0 +1,20 @@
+<!-- Candidate number: Y0073045 -->
+{{extend 'bootup-layout.html'}}
+
+    <!-- Main jumbotron for a primary marketing message or call to action -->
+    <div class="jumbotron">
+      <div class="container">
+        <h1>Welcome to BootUp!</h1>
+        <p>Crowd Funding at it's best.  Take a look at some featured Bootables below.</p>
+      </div>
+    </div>
+    
+    <div class="container">
+    	<h2>Newest Active Bootables</h2>
+    	{{bootables = newestFiveBootables}}
+		{{include "subviews/display-bootables.html"}}
+	
+    	<h2>Active Bootables Closest to Funding Goal</h2>
+    	{{bootables = closestFiveToFunded}}
+		{{include "subviews/display-bootables.html"}}
+	</div>

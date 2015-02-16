@@ -1,0 +1,114 @@
+/* Candidate number: Y0073045 */
+body {
+  padding-bottom: 20px;
+  padding-top: 50px;
+}
+
+.panel-text{
+	padding-left:10px;
+	padding-right:10px;
+	padding-bottom:10px;
+}
+
+.progress-bar-top-corners{
+	border-radius:0px;
+}
+
+.panel-image{
+	width:100%;
+}
+
+.login-register-form{
+	margin-top:40px;
+	max-width:400px;
+}
+
+.new-bootable-form{
+	margin-top:40px;
+	max-width:600px;
+}
+
+.brand-colour{
+	color: #428bca !important;
+}
+
+.view {
+	height:580px;
+}
+
+@media screen and (max-width: 768px) {
+	.view {
+		height:760px;
+	}
+}
+
+@media screen and (max-width: 600px) {
+	.view {
+		height:660px;
+	}
+}
+
+@media screen and (max-width: 500px) {
+	.view {
+		height:580px;
+	}
+}
+
+.view-bootable-title{
+}
+
+.view-left-column{
+	text-align:center;
+}
+
+.view-bootable-title h1 {
+	text-align: center;
+}
+	
+.view-image{
+	width:90%;
+	margin:auto;
+}
+
+.view-short-description{
+	font-style: italic;
+	font-size: 18px;
+	text-align: center;
+	padding-top: 14px;
+}
+
+.view-long-description{
+	text-align: left;
+}
+
+.profile-information-box{
+
+}
+
+ul {
+    list-style-position: inside;
+}
+
+th {
+	text-align: center;
+}
+
+td {
+	vertical-align:middle;
+}
+
+.profileBootableTableImageCell {
+	margin:0px;
+	padding:0px;
+	text-align:left;
+}
+
+.profileBootableTableImage {
+	width:128px;
+	border-radius:4px;
+}
+
+.view-category-link {
+	font-weight: bold;
+	color: white;
+}

@@ -1,0 +1,8 @@
+<!-- Candidate number: Y0073045 -->
+{{extend 'bootup-layout.html'}}
+
+<div class="container">
+	<h1>Search: "{{=request.vars.searchTerm}}"</h1>
+	<p>Results:</p>
+	{{include "subviews/display-bootables.html"}}
+</div>

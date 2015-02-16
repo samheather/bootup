@@ -1,0 +1,128 @@
+<!-- Candidate number: Y0073045 -->
+{{extend 'bootup-layout.html'}}
+
+<div class="container">
+
+	<div class="view-bootable-title">
+		<h1>{{=bootable.BootablesWithTotalPledged.title}}</h1>
+	</div>
+
+	<div class="col-xs-12 col-sm-8 view-left-column">
+		<div id="tabArea">
+		
+			<ul class="nav nav-pills" role="tablist" id="myTab">
+			  <li role="presentation" class="active"><a href="#bootableInformation" aria-controls="bootableInformation" role="tab" data-toggle="tab">Bootable Information</a></li>
+			  <li role="presentation"><a href="#pledges" aria-controls="pledges" role="tab" data-toggle="tab">Pledges To Date</a></li>
+			</ul>
+
+			<div class="tab-content">
+				<div role="tabpanel" class="tab-pane fade in active" id="bootableInformation">
+	
+					<div>
+						<img src="{{=URL('default', 'download', args=bootable.BootablesWithTotalPledged.image)}}" class="view-image"/>
+					</div>
+					<div class="view-short-description">
+						<p>{{=bootable.BootablesWithTotalPledged.shortDescription}}</p>
+					</div>
+					<div class="view-long-description">
+						<p>{{=bootable.BootablesWithTotalPledged.longDescription}}</p>
+					</div>
+					<h4>About the Bootable Manager</h4>
+					<div class="view-long-description">
+						<p>{{=bootable.BootablesWithTotalPledged.managerInfo}}</p>
+					</div>
+				</div>
+				<div role="tabpanel" class="tab-pane fade" id="pledges">
+					{{if len(usersAndPledges) == 0:}}
+						<p>Nobody has pledged to this Bootable yet.  You could be the first!</p>
+					{{else:}}
+						<table class="table table-striped">
+							<tr>
+								<th>Username</th>
+								<th>Pledge</th>
+								<th>Value</th>
+							</tr>
+							{{for userAndPledge in usersAndPledges:}}
+								<tr>
+									<td>{{=userAndPledge.auth_user.username}}</td>
+									<td>{{=userAndPledge.PledgeOptions.pledgeTitle}}</td>
+									<td>£{{=userAndPledge.PledgeOptions.price}}</td>
+								</tr>
+							{{pass}}
+						</table>
+					{{pass}}
+				</div>
+			</div>
+
+			<script>
+			  $(function () {
+				$('#myTab a:first').tab('show')
+			  })
+			</script>
+		</div>
+		
+	</div>
+	
+	<div class="col-xs-12 col-sm-4">
+<!--	TODO Factor out the below inline style CSS -->
+		<div class="panel panel-default panel-primary" style="margin-top:40px;">
+			<div class="panel-heading">
+				{{if bootable.BootablesWithTotalPledged.raised==0:}}
+					<p>Nobody has Booted this project yet.  Be the first!</p>
+				{{else:}}
+					<p>Pledged so far: <b>£{{=bootable.BootablesWithTotalPledged.raised}}</b></p>
+					<p>Which is <b>{{=bootable.BootablesWithTotalPledged.percentageComplete}}%</b> of the Funding Goal of <b>£{{=bootable.BootablesWithTotalPledged.fundingGoal}}</b></p>
+				{{pass}}
+				<p>Listed under <a class="view-category-link" href="{{=URL('default', 'category', args=bootable.Categories.category)}}">{{=bootable.Categories.category}}</a></p>
+			</div>
+		</div>
+		{{if userIsLoggedIn:}}
+			<div class="panel panel-default panel-primary">
+				<div class="panel-heading">
+					{{if pledgesFromThisUserForThisBootable==None:}}
+						<p>You haven't pledged to this Bootable.</p>
+					{{else:}}
+						<p>You pledged £{{=pledgesFromThisUserForThisBootable.PledgeOptions.price}} for "{{=pledgesFromThisUserForThisBootable.PledgeOptions.pledgeTitle}}".</p>
+					{{pass}}
+				</div>
+			</div>
+		{{pass}}
+		<div class="panel panel-default panel-primary">
+			<div class="panel-heading">Available pledging options:</div>
+			<div class="panel-body">
+				{{if len(processedPossiblePledges) == 0:}}
+				<p>You haven't added any Pledge Options yet.</p>
+				<p><a class="btn btn-primary" href="{{=URL('default', 'editPledge', args=request.args(0))}}" role="button">Add some now &raquo;</a></p>
+				{{pass}}
+				{{for i in range(0, len(processedPossiblePledges)):}}
+					{{pledgeOption = processedPossiblePledges[i]}}
+					<div class="possiblePledge">
+						<p><b>{{=pledgeOption['pledgeTitle']}}</b><p>
+						<ul>
+							{{for reward in pledgeOption['rewards']:}}
+							<li>{{=reward}}</li>
+							{{pass}}
+						</ul>
+						{{if auth.user:}}
+							{{if bootable.BootablesWithTotalPledged.state == 0:}}
+								<b><a class="btn btn-primary" href="{{=URL('default', 'boot', args=[request.args(0), pledgeOption['pledgeOption_id']])}}" role="button">Boot for £{{=pledgeOption['price']}} &raquo;</a></b>
+							{{else:}}
+								<b data-toggle="tooltip" data-placement="top" title="This Bootable is not 'Open for Pledges'">
+									<a disabled class="btn btn-primary" href="{{=URL('default', 'boot', args=[request.args(0), pledgeOption['pledgeOption_id']])}}" role="button">Boot for £{{=pledgeOption['price']}} &raquo;</a>
+								</b>
+							{{pass}}
+						{{pass}}
+						{{if pledgesFromThisUserForThisBootable!=None:}}
+							{{if pledgesFromThisUserForThisBootable.PledgeOptions.id == pledgeOption['pledgeOption_id']:}}
+								<span class="label label-success">&#8592; You Pledged</span>
+							{{pass}}
+						{{pass}}
+					</div>
+					{{if i != len(processedPossiblePledges)-1:}}
+						<hr>
+					{{pass}}
+				{{pass}}
+			</div>
+		</div>
+	</div>
+</div>

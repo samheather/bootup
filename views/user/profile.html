@@ -1,0 +1,86 @@
+<!-- Candidate number: Y0073045 -->
+{{extend 'bootup-layout.html'}}
+
+<div class="container">
+	<div class="col-xs-12 col-sm-12 view-left-column">
+		<h1>Your Bootables</h1>
+		{{if len(myBootables) == 0:}}
+			<p>You haven't started any Bootables yet.</p>
+		{{else:}}
+			<table class="table table-striped">
+				<tr>
+					<th></th>
+					<th>Bootable</th>
+					<th>Status</th>
+					<th>Options</th>
+				</tr>
+				{{for bootable in myBootables:}}
+					<tr>
+						<td class="profileBootableTableImageCell">
+							<img class="profileBootableTableImage" src="{{=URL('default', 'download', args=bootable.BootablesWithTotalPledged.image)}}" />
+						</td>
+						<td>
+							{{=bootable.BootablesWithTotalPledged.title}}
+						</td>
+						<td><p>{{=bootable.States.state}}</p><h3>{{=bootable.BootablesWithTotalPledged.percentageComplete}}%</h3><h5>Funded</h5></td>
+						<td>
+							<p>{{if bootable.BootablesWithTotalPledged.state == -1:}}
+							<a class="btn btn-primary" href="{{=URL('default', 'editBootable', args=bootable.BootablesWithTotalPledged.id)}}" role="button">Edit Bootable &raquo;</a>
+							<a class="btn btn-primary" href="{{=URL('default', 'view', args=bootable.BootablesWithTotalPledged.id)}}" role="button">Preview &raquo;</a>
+							{{if bootable.BootablesWithTotalPledged.id in myBootablesIdsWithPledgeOptions:}}
+							<a class="btn btn-primary" href="{{=URL('default', 'launchOrRelaunch', args=[bootable.BootablesWithTotalPledged.id, 'profile'])}}" role="button">Launch &raquo;</a>
+							{{else:}}
+							<b data-toggle="tooltip" data-placement="top" title="You need to add Pledge Options before Launching this Bootable.  Click 'Edit Bootable' to do this.">
+								<a disabled class="btn btn-primary" href="#" role="button">Launch &raquo;</a>
+							</b>
+							{{pass}}
+							{{elif bootable.BootablesWithTotalPledged.state == 0:}}
+							<a class="btn btn-primary" href="{{=URL('default', 'view', args=bootable.BootablesWithTotalPledged.id)}}" role="button">View &raquo;</a>
+							<a class="btn btn-primary" href="{{=URL('default', 'close', args=[bootable.BootablesWithTotalPledged.id, 'profile'])}}" role="button">Close &raquo;</a>
+							{{elif bootable.BootablesWithTotalPledged.state == 2:}}
+							<a class="btn btn-primary" href="{{=URL('default', 'launchOrRelaunch', args=[bootable.BootablesWithTotalPledged.id, 'profile'])}}" role="button">Relaunch &raquo;</a>
+							{{pass}}
+							{{if bootable.BootablesWithTotalPledged.state != 0:}}
+							<a class="btn btn-primary" href="{{=URL('default', 'deleteBootable', args=bootable.BootablesWithTotalPledged.id)}}" role="button">Delete &raquo;</a>
+							{{pass}}
+							</p>
+						</td>
+					</tr>
+				{{pass}}
+			</table>
+		{{pass}}
+		
+		<h1>Your Pledges</h1>
+		{{if len(myPledgeOptionsAndRewards) == 0:}}
+			<p>You haven't pledged to any Bootables yet.</p>
+		{{else:}}
+			<table class="table table-striped">
+				<tr>
+					<th></th>
+					<th>Bootable</th>
+					<th>Your Pledge</th>
+					<th>Project Status</th>
+					<th>Your Rewards</th>
+				</tr>
+				{{for pledge in myPledgeOptionsAndRewards:}}
+					<tr>
+						<td class="profileBootableTableImageCell">
+							<img class="profileBootableTableImage" src="{{=URL('default', 'download', args=pledge.BootablesWithTotalPledged.image)}}" />
+						</td>
+						<td>
+							{{=pledge.BootablesWithTotalPledged.title}}
+						</td>
+						<td>£{{=pledge.RewardsForEachPledgeOption.price}}</td>
+						<td><p>{{=pledge.States.state}}</p><h3>{{=pledge.BootablesWithTotalPledged.percentageComplete}}%</h3><h5>Funded</h5></td>
+						<td>
+							{{for reward in pledge.RewardsForEachPledgeOption.rewardsForThisPledgeOption.split(","):}}
+							<li>{{=reward}}</li>
+							{{pass}}
+						</td>
+					</tr>
+				{{pass}}
+			</table>
+		{{pass}}
+		
+	</div>
+</div>

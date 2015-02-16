@@ -1,0 +1,6 @@
+<!-- Candidate number: Y0073045 -->
+<p>{{=address.Addresses.streetAddress}}</p>
+<p>{{=address.Addresses.city}}</p>
+<p>{{=address.Countries.country}}</p>
+<p>{{=address.Addresses.postalCode}}</p>
+<p><a class="btn btn-primary" href="{{=URL('user', 'editProfile', args=['Address', address.Addresses.id])}}" role="button">Edit Address &raquo;</a></p>
